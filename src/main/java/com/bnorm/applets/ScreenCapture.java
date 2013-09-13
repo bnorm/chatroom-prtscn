@@ -16,16 +16,25 @@ import javax.swing.JApplet;
 import javax.swing.JButton;
 import javax.swing.SwingUtilities;
 
+import org.apache.http.HttpEntity;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.mime.MultipartEntity;
+import org.apache.http.entity.mime.content.FileBody;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
+
 public class ScreenCapture extends JApplet {
 
-   // upload to : http://<redacted>/FILES/upload.php
    @Override
    public void init() {
+      final String postURL = getParameter("postURL");
+
       try {
          SwingUtilities.invokeAndWait(new Runnable() {
             @Override
             public void run() {
-               System.out.println(getDocumentBase());
                JButton button = new JButton("PtrScn");
                button.addActionListener(new ActionListener() {
                   @Override
@@ -34,6 +43,7 @@ public class ScreenCapture extends JApplet {
                         File file = new File("printscreen.jpg");
                         ImageIO.write(prtscn(), "jpg", file);
                         System.out.println("Screen printed to [" + file.getAbsolutePath() + "]");
+                        postData(postURL, file);
                      } catch (IOException e) {
                         System.err.println(e);
                      } catch (AWTException e) {
@@ -63,5 +73,35 @@ public class ScreenCapture extends JApplet {
       }
 
       return new Robot().createScreenCapture(screenRect);
+   }
+
+   public static void postData(String urlString, File file) throws IOException {
+      CloseableHttpClient client = HttpClients.createDefault();
+      try {
+
+         MultipartEntity entity = new MultipartEntity();
+         FileBody body = new FileBody(file);
+         entity.addPart("image", body);
+
+         HttpPost post = new HttpPost(urlString);
+         post.setEntity(entity);
+
+         CloseableHttpResponse response = client.execute(post);
+         try {
+            HttpEntity resEntity = response.getEntity();
+
+            System.out.println("----------------------------------------");
+            System.out.println(response.getStatusLine());
+            if (resEntity != null) {
+               System.out.println("Response content length: " + resEntity.getContentLength());
+               EntityUtils.consume(resEntity);
+            }
+            System.out.println("----------------------------------------");
+         } finally {
+            response.close();
+         }
+      } finally {
+         client.close();
+      }
    }
 }
