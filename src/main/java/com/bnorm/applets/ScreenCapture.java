@@ -31,8 +31,8 @@ public class ScreenCapture extends JApplet {
                         @Override
                         public void actionPerformed(ActionEvent event) {
                             try {
-                                File file = new File("printscreen.bmp");
-                                ImageIO.write(prtscn(), "bmp", file);
+                                File file = new File("printscreen.jpg");
+                                ImageIO.write(prtscn(), "jpg", file);
                                 System.out.println("Screen printed to [" + file.getAbsolutePath() + "]");
                             } catch (IOException e) {
                                 System.err.println(e);
@@ -51,7 +51,7 @@ public class ScreenCapture extends JApplet {
 
     @Override
     public void destroy() {
-        File file = new File("printscreen.bmp");
+        File file = new File("printscreen.jpg");
         boolean success = file.delete();
         System.out.println("File [" + file + "] was" + (success ? "" : " not") + " deleted.");
     }
