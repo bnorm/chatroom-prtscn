@@ -98,20 +98,23 @@ public class JScreenCapture extends JApplet {
 
       try {
          CloseableHttpClient client = HttpClients.createDefault();
+         System.out.println("    Opening client connection => " + client);
          try {
             HttpPost post = new HttpPost(postURL);
+            System.out.println("    Building POST => " + post);
             MultipartEntity entity = new MultipartEntity();
             ByteArrayBody body = new ByteArrayBody(array, null);
             entity.addPart("image", body);
             post.setEntity(entity);
 
+            System.out.println("    Executing POST => " + post);
             CloseableHttpResponse response = client.execute(post);
+            System.out.println("    Received response => " + response);
             try {
                HttpEntity resEntity = response.getEntity();
-               if (resEntity != null) {
-                  EntityUtils.consume(resEntity);
-                  successful = true;
-               }
+               System.out.println("    Consuming response entity => " + resEntity);
+               EntityUtils.consume(resEntity);
+               successful = true;
             } finally {
                response.close();
             }
