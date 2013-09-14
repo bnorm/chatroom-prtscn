@@ -10,6 +10,7 @@ import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 
 import javax.imageio.ImageIO;
 import javax.swing.JApplet;
@@ -27,9 +28,18 @@ import org.apache.http.util.EntityUtils;
 
 public class ScreenCapture extends JApplet {
 
+   public static final String PARAMETER_POST_URL = "postURL";
+
+   public static final String FILE_IMAGE_EXTENSION = "jpg";
+   public static final String FILE_NAME = "print_screen";
+
    @Override
    public void init() {
-      final String postURL = getParameter("postURL");
+      final String postURL = getParameter(PARAMETER_POST_URL);
+      if (postURL == null) {
+         System.err.println("");
+         return;
+      }
 
       try {
          SwingUtilities.invokeAndWait(new Runnable() {
@@ -40,8 +50,8 @@ public class ScreenCapture extends JApplet {
                   @Override
                   public void actionPerformed(ActionEvent event) {
                      try {
-                        File file = new File("printscreen.jpg");
-                        ImageIO.write(prtscn(), "jpg", file);
+                        File file = new File(FILE_NAME + "." + FILE_IMAGE_EXTENSION);
+                        ImageIO.write(prtscn(), FILE_IMAGE_EXTENSION, file);
                         System.out.println("Screen printed to [" + file.getAbsolutePath() + "]");
                         postData(postURL, file);
                      } catch (IOException e) {
@@ -61,7 +71,7 @@ public class ScreenCapture extends JApplet {
 
    @Override
    public void destroy() {
-      File file = new File("printscreen.jpg");
+      File file = new File(FILE_NAME + "." + FILE_IMAGE_EXTENSION);
       boolean success = file.delete();
       System.out.println("File [" + file + "] was" + (success ? "" : " not") + " deleted.");
    }
