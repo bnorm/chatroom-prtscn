@@ -35,7 +35,7 @@ public class JScreenCapture extends JApplet {
    public void init() {
       final String postURL = getParameter(PARAMETER_POST_URL);
       if (postURL == null) {
-         System.err.println("");
+         System.err.println("No POST URL provided!");
          return;
       }
 
@@ -59,6 +59,7 @@ public class JScreenCapture extends JApplet {
    }
 
    public static BufferedImage prtscn() {
+      System.out.println("ENTER prtscn()");
       Rectangle screenRect = new Rectangle(0, 0, 0, 0);
       for (GraphicsDevice gd : GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices()) {
          screenRect = screenRect.union(gd.getDefaultConfiguration().getBounds());
@@ -70,33 +71,28 @@ public class JScreenCapture extends JApplet {
       } catch (AWTException e) {
          System.err.println(e);
       }
+      System.out.println("EXIT prtscn() => " + image);
       return image;
    }
 
-   public boolean post(String postURL, BufferedImage image) {
+   public static boolean post(String postURL, BufferedImage image) {
       System.out.println("ENTER post(" + postURL + ", " + image + ")");
       boolean successful = false;
 
       if (postURL == null) {
          System.err.println("POST URL parameter is null!");
-         System.out.println("EXIT post => " + false);
+         System.out.println("EXIT post(null, " + image + ") => false");
          return false;
       } else if (image == null) {
          System.err.println("Image parameter is null!");
-         System.out.println("EXIT post => " + false);
+         System.out.println("EXIT post(" + postURL + ", null) => false");
          return false;
       }
 
-      byte[] array = null;
-      try {
-         array = convert(image);
-      } catch (IOException e) {
-         System.out.println("There was an exception converting image!");
-         System.err.println(e);
-      }
+      byte[] array = convert(image);
       if (array == null) {
          System.err.println("Unable to convert image to byte array!");
-         System.out.println("EXIT post => " + false);
+         System.out.println("EXIT post(" + postURL + ", " + image + ") => false");
          return false;
       }
 
@@ -127,20 +123,27 @@ public class JScreenCapture extends JApplet {
          System.err.println(e);
       }
 
-      System.out.println("EXIT post => " + successful);
+      System.out.println("EXIT post(" + postURL + ", " + image + ") => " + successful);
       return successful;
    }
 
-   public static byte[] convert(BufferedImage image) throws IOException {
-      ByteArrayOutputStream stream = new ByteArrayOutputStream();
+   public static byte[] convert(BufferedImage image) {
+      System.out.println("ENTER convert(" + image + ")");
       byte[] bytes = null;
       try {
-         ImageIO.write(image, IMAGE_TYPE, stream);
-         stream.flush();
-         bytes = stream.toByteArray();
-      } finally {
-         stream.close();
+         ByteArrayOutputStream stream = new ByteArrayOutputStream();
+         try {
+            ImageIO.write(image, IMAGE_TYPE, stream);
+            stream.flush();
+            bytes = stream.toByteArray();
+         } finally {
+            stream.close();
+         }
+      } catch (IOException e) {
+         System.out.println("There was an exception converting image!");
+         System.err.println(e);
       }
+      System.out.println("EXIT convert(" + image + ") => " + (bytes == null ? null : "Byte[" + bytes.length + "]"));
       return bytes;
    }
 }
