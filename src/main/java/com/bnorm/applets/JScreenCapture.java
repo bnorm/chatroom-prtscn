@@ -8,7 +8,7 @@ import java.awt.Robot;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
-import java.io.File;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 import javax.imageio.ImageIO;
@@ -20,7 +20,7 @@ import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.mime.MultipartEntity;
-import org.apache.http.entity.mime.content.FileBody;
+import org.apache.http.entity.mime.content.ByteArrayBody;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
@@ -29,8 +29,7 @@ public class JScreenCapture extends JApplet {
 
    public static final String PARAMETER_POST_URL = "postURL";
 
-   public static final String FILE_IMAGE_EXTENSION = "jpg";
-   public static final String FILE_NAME = "print_screen";
+   public static final String IMAGE_TYPE = "jpg";
 
    @Override
    public void init() {
@@ -48,16 +47,7 @@ public class JScreenCapture extends JApplet {
                button.addActionListener(new ActionListener() {
                   @Override
                   public void actionPerformed(ActionEvent event) {
-                     try {
-                        File file = new File(FILE_NAME + "." + FILE_IMAGE_EXTENSION);
-                        ImageIO.write(prtscn(), FILE_IMAGE_EXTENSION, file);
-                        System.out.println("Screen printed to [" + file.getAbsolutePath() + "]");
-                        postData(postURL, file);
-                     } catch (IOException e) {
-                        System.err.println(e);
-                     } catch (AWTException e) {
-                        System.err.println(e);
-                     }
+                     post(postURL, prtscn());
                   }
                });
                add(button);
@@ -68,49 +58,89 @@ public class JScreenCapture extends JApplet {
       }
    }
 
-   @Override
-   public void destroy() {
-      File file = new File(FILE_NAME + "." + FILE_IMAGE_EXTENSION);
-      boolean success = file.delete();
-      System.out.println("File [" + file + "] was" + (success ? "" : " not") + " deleted.");
-   }
-
-   public static BufferedImage prtscn() throws AWTException {
+   public static BufferedImage prtscn() {
       Rectangle screenRect = new Rectangle(0, 0, 0, 0);
       for (GraphicsDevice gd : GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices()) {
          screenRect = screenRect.union(gd.getDefaultConfiguration().getBounds());
       }
 
-      return new Robot().createScreenCapture(screenRect);
+      BufferedImage image = null;
+      try {
+         image = new Robot().createScreenCapture(screenRect);
+      } catch (AWTException e) {
+         System.err.println(e);
+      }
+      return image;
    }
 
-   public static void postData(String urlString, File file) throws IOException {
-      CloseableHttpClient client = HttpClients.createDefault();
-      try {
+   public boolean post(String postURL, BufferedImage image) {
+      System.out.println("ENTER post(" + postURL + ", " + image + ")");
+      boolean successful = false;
 
-         MultipartEntity entity = new MultipartEntity();
-         FileBody body = new FileBody(file);
-         entity.addPart("image", body);
-
-         HttpPost post = new HttpPost(urlString);
-         post.setEntity(entity);
-
-         CloseableHttpResponse response = client.execute(post);
-         try {
-            HttpEntity resEntity = response.getEntity();
-
-            System.out.println("----------------------------------------");
-            System.out.println(response.getStatusLine());
-            if (resEntity != null) {
-               System.out.println("Response content length: " + resEntity.getContentLength());
-               EntityUtils.consume(resEntity);
-            }
-            System.out.println("----------------------------------------");
-         } finally {
-            response.close();
-         }
-      } finally {
-         client.close();
+      if (postURL == null) {
+         System.err.println("POST URL parameter is null!");
+         System.out.println("EXIT post => " + false);
+         return false;
+      } else if (image == null) {
+         System.err.println("Image parameter is null!");
+         System.out.println("EXIT post => " + false);
+         return false;
       }
+
+      byte[] array = null;
+      try {
+         array = convert(image);
+      } catch (IOException e) {
+         System.out.println("There was an exception converting image!");
+         System.err.println(e);
+      }
+      if (array == null) {
+         System.err.println("Unable to convert image to byte array!");
+         System.out.println("EXIT post => " + false);
+         return false;
+      }
+
+      try {
+         CloseableHttpClient client = HttpClients.createDefault();
+         try {
+            HttpPost post = new HttpPost(postURL);
+            MultipartEntity entity = new MultipartEntity();
+            ByteArrayBody body = new ByteArrayBody(array, null);
+            entity.addPart("image", body);
+            post.setEntity(entity);
+
+            CloseableHttpResponse response = client.execute(post);
+            try {
+               HttpEntity resEntity = response.getEntity();
+               if (resEntity != null) {
+                  EntityUtils.consume(resEntity);
+                  successful = true;
+               }
+            } finally {
+               response.close();
+            }
+         } finally {
+            client.close();
+         }
+      } catch (IOException e) {
+         System.out.println("There was an exception POSTing image!");
+         System.err.println(e);
+      }
+
+      System.out.println("EXIT post => " + successful);
+      return successful;
+   }
+
+   public static byte[] convert(BufferedImage image) throws IOException {
+      ByteArrayOutputStream stream = new ByteArrayOutputStream();
+      byte[] bytes = null;
+      try {
+         ImageIO.write(image, IMAGE_TYPE, stream);
+         stream.flush();
+         bytes = stream.toByteArray();
+      } finally {
+         stream.close();
+      }
+      return bytes;
    }
 }
